@@ -1,0 +1,7 @@
+__pycache__
+.venv
+.git
+.pdm-python
+dist
+*.egg-info
+.DS_Store
