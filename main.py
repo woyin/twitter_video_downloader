@@ -10,6 +10,7 @@ import yt_dlp
 
 from fastapi import FastAPI, HTTPException, Query, Depends, Security
 from fastapi.security.api_key import APIKeyHeader, APIKeyQuery
+from pydantic import BaseModel
 from starlette.status import HTTP_403_FORBIDDEN
 import os
 
