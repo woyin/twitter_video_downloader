@@ -10,7 +10,6 @@ import yt_dlp
 
 from fastapi import FastAPI, HTTPException, Query, Depends, Security
 from fastapi.security.api_key import APIKeyHeader, APIKeyQuery
-from fastapi.security import APIKey
 from starlette.status import HTTP_403_FORBIDDEN
 import os
 
@@ -165,7 +164,7 @@ def extract_video_url(url: str) -> dict:
 )
 async def extract_video_get(
     xid: str = Query(..., description="Twitter/X 帖子 URL"),
-    api_key: APIKey = Depends(get_api_key),
+    api_key: str = Depends(get_api_key),
 ):
     """
     GET 方法提取视频 URL
@@ -185,7 +184,7 @@ async def extract_video_get(
 )
 async def extract_video_post(
     request: ExtractRequest,
-    api_key: APIKey = Depends(get_api_key)
+    api_key: str = Depends(get_api_key)
 ):
     """
     POST 方法提取视频 URL
