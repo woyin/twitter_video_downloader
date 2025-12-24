@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    # 替换下面的 owner 和 repo 为你的 GitHub 用户名和仓库名 (全小写)
+    # 例如: image: ghcr.io/woyin/twitter_video_downloader:latest
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/${GITHUB_REPOSITORY_NAME}:latest
+    container_name: twitter_video_downloader
+    restart: always
+    # 不暴露任何端口到宿主机，仅允许 Docker 网络内部访问
+    expose:
+      - "8000"
+    # 加入 Caddy 所在的网络
+    networks:
+      - caddy_net
+    environment:
+      - TZ=Asia/Shanghai
+      - PORT=8000
+      # - API_KEY=set_your_key_here
+
+# 使用外部已存在的网络 (假设你的 Caddy 已经在 caddy_net 中)
+networks:
+  caddy_net:
+    external: true
