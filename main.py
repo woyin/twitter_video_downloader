@@ -7,8 +7,12 @@ Twitter/X Video URL Extractor API
 from typing import Optional
 
 import yt_dlp
-from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
+
+from fastapi import FastAPI, HTTPException, Query, Depends, Security
+from fastapi.security.api_key import APIKeyHeader, APIKeyQuery
+from fastapi.security import APIKey
+from starlette.status import HTTP_403_FORBIDDEN
+import os
 
 app = FastAPI(
     title="Twitter Video Downloader API",
@@ -16,6 +20,29 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# 获取环境变量中的 API KEY
+API_KEY = os.getenv("API_KEY")
+API_KEY_NAME = "x-api-key"
+
+api_key_query = APIKeyQuery(name=API_KEY_NAME, auto_error=False)
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def get_api_key(
+    api_key_query: str = Security(api_key_query),
+    api_key_header: str = Security(api_key_header),
+):
+    # 如果没有设置 API_KEY 环境变量，则视为不需要鉴权
+    if not API_KEY:
+        return None
+
+    if api_key_query == API_KEY:
+        return api_key_query
+    if api_key_header == API_KEY:
+        return api_key_header
+    
+    raise HTTPException(
+        status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+    )
 
 class ExtractRequest(BaseModel):
     """POST 请求体"""
@@ -138,11 +165,13 @@ def extract_video_url(url: str) -> dict:
 )
 async def extract_video_get(
     xid: str = Query(..., description="Twitter/X 帖子 URL"),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """
     GET 方法提取视频 URL
 
     - **xid**: Twitter/X 帖子 URL (如: https://x.com/user/status/123456)
+    - **x-api-key**: 在Header或Query参数中携带 API KEY
     """
     result = extract_video_url(xid)
     return result
@@ -154,12 +183,16 @@ async def extract_video_get(
     summary="提取视频 URL (POST)",
     description="通过 POST 请求提取 Twitter/X 帖子中的视频 URL",
 )
-async def extract_video_post(request: ExtractRequest):
+async def extract_video_post(
+    request: ExtractRequest,
+    api_key: APIKey = Depends(get_api_key)
+):
     """
     POST 方法提取视频 URL
 
     请求体:
     - **xid**: Twitter/X 帖子 URL (如: https://x.com/user/status/123456)
+    - **x-api-key**: 在Header或Query参数中携带 API KEY
     """
     result = extract_video_url(request.xid)
     return result
