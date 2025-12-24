@@ -39,10 +39,13 @@ COPY README.md ./
 # 如果项目作为一个包安装，可以去掉 --no-self 并在这里运行 pdm install
 # 目前看来是个单文件脚本，直接复制即可
 
+# 默认端口
+ENV PORT=8000
+
 # 暴露端口
-EXPOSE 8000
+EXPOSE $PORT
 
 # 启动命令
 # 使用 pdm run 或者直接调用 uvicorn (如果安装在 .venv 中)
 # 使用 pdm run 比较方便，它会自动处理 venv
-CMD ["pdm", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD pdm run uvicorn main:app --host 0.0.0.0 --port $PORT
