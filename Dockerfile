@@ -34,7 +34,7 @@ RUN pdm install --prod --no-editable --no-self
 
 # 复制源代码
 COPY main.py ./
-COPY README.md ./
+# COPY README.md ./
 
 # 如果项目作为一个包安装，可以去掉 --no-self 并在这里运行 pdm install
 # 目前看来是个单文件脚本，直接复制即可
