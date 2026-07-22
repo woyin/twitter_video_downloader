@@ -1,15 +1,20 @@
 [project]
 name = "TwitterVideoDownloader"
 version = "0.1.0"
-description = "Default template for PDM package"
+description = "解析 Twitter/X 帖子中的视频真实下载地址,提供 GET/POST 接口与 iOS 快捷指令"
 authors = [
-    {name = "Francis Chen", email = "breestealth@gmail.com"},
+    { name = "Francis Chen", email = "breestealth@gmail.com" },
 ]
-dependencies = ["fastapi>=0.127.0", "uvicorn[standard]>=0.40.0", "yt-dlp>=2025.12.8"]
-requires-python = "==3.12.*"
+dependencies = [
+    "fastapi>=0.127.0",
+    "uvicorn[standard]>=0.40.0",
+    "yt-dlp>=2025.12.8",
+]
+# 3.12 起步,封顶 <3.14 以保证依赖(尤其 fastapi)稳定;uv 会自动取 3.13
+requires-python = ">=3.12,<3.14"
 readme = "README.md"
-license = {text = "MIT"}
+license = { text = "MIT" }
 
-
-[tool.pdm]
-distribution = false
+# 这是一个应用(无可构建的包),uv 按虚拟项目处理,只装 dependencies
+[tool.uv]
+package = false

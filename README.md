@@ -27,8 +27,8 @@ services:
       - "8000:8000"
     environment:
       - TZ=Asia/Shanghai
-      # 可选：设置 API 鉴权密钥。如果不设置，API 将公开访问。
-      - API_KEY=your_secret_key 
+      # 鉴权密钥(推荐开启,且与 iOS 快捷指令里填的 key 一致)。不设则公开访问。
+      - API_KEY=your_secret_key
       # 可选：修改容器内部监听端口 (默认 8000)
       - PORT=8000
 ```
@@ -97,13 +97,22 @@ curl "http://localhost:8000/extract?xid=https://x.com/SpaceX/status/187132924190
 }
 ```
 
+## iOS 快捷指令(一键存相册)
+
+仓库 `shortcut/` 目录提供了一个 iOS 快捷指令,调用本服务的 `/extract` 接口,把视频推文**一键解析并存进 iPhone 相册**(支持分享菜单触发 + 手动粘贴兜底)。
+
+详见 [`shortcut/README.md`](shortcut/README.md)。
+
 ## 开发
 
-本项目使用 [PDM](https://pdm.fming.dev/) 进行依赖管理。
+本项目使用 [uv](https://docs.astral.sh/uv/) 进行 Python 版本与依赖管理。
 
 1.  克隆仓库
-2.  安装依赖: `pdm install`
-3.  运行测试: `pdm run uvicorn main:app --reload`
+2.  安装依赖(自动创建 `.venv`、按 `uv.lock` 锁定版本): `uv sync`
+3.  本地运行: `uv run uvicorn main:app --reload`
+4.  更新依赖后重新锁定: `uv lock`
+
+> Docker 镜像也已从 PDM 迁移到 uv,构建更快、层数缓存更友好。
 
 ## License
 

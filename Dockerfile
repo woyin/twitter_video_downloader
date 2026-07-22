@@ -1,36 +1,32 @@
-# 使用 Python 3.12 Alpine 版本以获得最小镜像体积
-FROM python:3.12-alpine
+# 使用 Debian slim(比 alpine 兼容性好,无需 musl 编译工具)
+FROM python:3.13-slim
 
-# 设置工作目录
 WORKDIR /app
 
-# 设置环境变量
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-# 默认端口
-ENV PORT=8000
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8000 \
+    # 让容器直接用 uv 创建的 venv
+    PATH="/app/.venv/bin:$PATH"
 
-# 安装系统依赖 (ffmpeg 和 git 仍然是必需的)
-# Alpine 使用 apk
-RUN apk add --no-cache ffmpeg git
+# 系统依赖:ffmpeg(yt-dlp 转码/合并用)、git、ca-certificates
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# 安装 PDM
-RUN pip install --no-cache-dir pdm
+# 从官方镜像拷入 uv(体积小、层缓存友好)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# 复制依赖文件
-COPY pyproject.toml pdm.lock ./
+# 先拷依赖描述 + lock,利用 Docker 层缓存(代码改动不会重装依赖)
+COPY pyproject.toml uv.lock ./
 
-# 安装依赖
-# 注意: 某些 Python 包在 Alpine 上可能需要编译工具 (gcc, musl-dev 等)
-# 但 yt-dlp, fastapi, uvicorn 通常有 pure python wheel 或能在 alpine 上安装
-RUN pdm install --prod --no-editable --no-self
+# 只装运行依赖(frozen:严格按 lock;no-dev:不装开发依赖)
+RUN uv sync --frozen --no-dev
 
-# 复制源代码
-COPY main.py ./
-COPY README.md ./
+# 拷源码
+COPY main.py README.md ./
 
-# 暴露端口
-EXPOSE $PORT
+EXPOSE 8000
 
-# 启动命令
-CMD pdm run uvicorn main:app --host 0.0.0.0 --port $PORT
+# shell 形式以便 ${PORT} 展开
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
