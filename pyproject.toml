@@ -18,3 +18,22 @@ license = { text = "MIT" }
 # 这是一个应用(无可构建的包),uv 按虚拟项目处理,只装 dependencies
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4"]
+ignore = ["B008"]  # FastAPI 依赖注入惯用 Depends()/Security() 作为默认值
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
