@@ -6,8 +6,9 @@
 
 *   🚀 **开箱即用**: 提供 Docker 镜像，一键部署。
 *   🎥 **智能解析**: 自动过滤 M3U8 流，直接提取最高画质的 MP4 直链。
-*   🔒 **安全鉴权**: 支持可选的 API Key 鉴权机制。
-*   ⚡ **高性能**: 基于 FastAPI 和 Uvicorn 构建，响应迅速。
+*   🔒 **强制鉴权**: 必须设置 `API_KEY`，未设置时服务拒绝所有请求（fail-closed）。
+*   🛡️ **域名白名单**: 只解析 x.com / twitter.com 链接，避免被当作任意 URL 代理。
+*   ⚡ **高性能**: 解析结果按 URL 缓存，并发解析数受限，阻塞调用不占用事件循环。
 
 ## 快速开始
 
@@ -27,7 +28,7 @@ services:
       - "8000:8000"
     environment:
       - TZ=Asia/Shanghai
-      # 鉴权密钥(推荐开启,且与 iOS 快捷指令里填的 key 一致)。不设则公开访问。
+      # 必填:鉴权密钥,需与 iOS 快捷指令里填的 key 一致。不设则服务拒绝所有请求。
       - API_KEY=your_secret_key
       # 可选：修改容器内部监听端口 (默认 8000)
       - PORT=8000
@@ -58,8 +59,8 @@ API 启动后，可以访问 `http://localhost:8000/docs` 查看交互式 Swagge
 **端点**: `/extract`
 
 **参数**:
-*   `xid`: Twitter/X 帖子 URL (例如 `https://x.com/user/status/123456`)
-*   `x-api-key`: (如果在环境变量中设置了 API_KEY) 鉴权密钥
+*   `xid`: Twitter/X 帖子 URL (例如 `https://x.com/user/status/123456`)，仅支持 x.com / twitter.com
+*   `x-api-key`: 鉴权密钥，必填
 
 **示例**:
 ```bash
@@ -71,7 +72,7 @@ curl "http://localhost:8000/extract?xid=https://x.com/SpaceX/status/187132924190
 **端点**: `/extract`
 
 **Header**:
-*   `x-api-key`: (如果在环境变量中设置了 API_KEY) 鉴权密钥
+*   `x-api-key`: 鉴权密钥，必填
 
 **Body**:
 ```json
@@ -103,6 +104,29 @@ curl "http://localhost:8000/extract?xid=https://x.com/SpaceX/status/187132924190
 
 详见 [`shortcut/README.md`](shortcut/README.md)。
 
+## 错误响应
+
+| HTTP 状态 | 场景 |
+| :-- | :-- |
+| `200` + `success: false` | 链接无效、帖子无视频、解析失败、服务繁忙 |
+| `403` | API Key 缺失或不匹配 |
+| `503` | 服务端未配置 `API_KEY` |
+
+错误响应只返回通用提示，不暴露 yt-dlp 内部错误文本；详细原因写入服务端日志。
+
+## 配置
+
+| 环境变量 | 默认值 | 说明 |
+| :-- | :-- | :-- |
+| `API_KEY` | 无（必填） | 鉴权密钥 |
+| `PORT` | `8000` | 容器内监听端口 |
+| `WEB_CONCURRENCY` | `1` | uvicorn worker 进程数 |
+| `CACHE_TTL_SECONDS` | `300` | 解析结果缓存秒数，`0` 关闭 |
+| `CACHE_MAX_ENTRIES` | `256` | 缓存条目上限 |
+| `YTDLP_SOCKET_TIMEOUT` | `15` | yt-dlp 网络超时秒数 |
+| `MAX_CONCURRENT_EXTRACTIONS` | `8` | 同时解析数上限 |
+| `EXTRACT_QUEUE_WAIT_SECONDS` | `20` | 排队超时，超时返回"服务繁忙" |
+
 ## 开发
 
 本项目使用 [uv](https://docs.astral.sh/uv/) 进行 Python 版本与依赖管理。
@@ -111,6 +135,16 @@ curl "http://localhost:8000/extract?xid=https://x.com/SpaceX/status/187132924190
 2.  安装依赖(自动创建 `.venv`、按 `uv.lock` 锁定版本): `uv sync`
 3.  本地运行: `uv run uvicorn main:app --reload`
 4.  更新依赖后重新锁定: `uv lock`
+
+### 测试与静态检查
+
+```bash
+uv run pytest -q          # 单元测试（不联网，yt-dlp 被替身替换）
+uv run ruff check .       # 静态检查
+uv run ruff format .      # 格式化
+```
+
+CI 在每次 push 和 PR 上运行 ruff 与 pytest（`.github/workflows/test.yml`），Docker 镜像发布由 `publish.yml` 负责。
 
 > Docker 镜像也已从 PDM 迁移到 uv,构建更快、层数缓存更友好。
 

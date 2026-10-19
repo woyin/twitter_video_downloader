@@ -1,4 +1,4 @@
-# 使用 Debian slim(比 alpine 兼容性好,无需 musl 编译工具)
+# Debian slim:glibc 兼容性优于 alpine,无需 musl 编译工具链
 FROM python:3.13-slim
 
 WORKDIR /app
@@ -6,12 +6,13 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000 \
-    # 让容器直接用 uv 创建的 venv
+    WEB_CONCURRENCY=1 \
     PATH="/app/.venv/bin:$PATH"
 
-# 系统依赖:ffmpeg(yt-dlp 转码/合并用)、git、ca-certificates
+# ca-certificates 供 yt-dlp 访问 HTTPS;本服务不下载媒体,不需要 ffmpeg。
+# git 只在构建镜像时用不到,已移除。
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg git ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # 从官方镜像拷入 uv(体积小、层缓存友好)
@@ -26,7 +27,15 @@ RUN uv sync --frozen --no-dev
 # 拷源码
 COPY main.py README.md ./
 
+# 以非 root 用户运行
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
-# shell 形式以便 ${PORT} 展开
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8000') + '/', timeout=3)"
+
+# shell 形式以便 ${PORT} 与 ${WEB_CONCURRENCY} 展开
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT} --workers ${WEB_CONCURRENCY}
