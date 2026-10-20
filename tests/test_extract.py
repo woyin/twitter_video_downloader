@@ -143,3 +143,21 @@ def test_ydl_opts_are_hardened(fake_ytdlp):
     assert opts["quiet"] is True
     assert opts["noplaylist"] is True
     assert opts["socket_timeout"] > 0
+
+
+def test_real_ytdlp_no_video_message_maps_to_friendly(fake_ytdlp):
+    """yt-dlp 对无视频推文的真实文案必须映射为友好提示,而不是通用错误。"""
+    FakeYDL.error = yt_dlp.utils.DownloadError(
+        "ERROR: [twitter] 1871329241904255193: No video could be found in this tweet"
+    )
+    result = main.extract_video_url("https://x.com/u/status/1871329241904255193")
+
+    assert result["success"] is False
+    assert result["message"] == main.NO_VIDEO_MESSAGE
+
+
+def test_all_no_video_markers_map_to_friendly(fake_ytdlp):
+    for marker in main.NO_VIDEO_ERROR_MARKERS:
+        FakeYDL.error = yt_dlp.utils.DownloadError(f"ERROR: something {marker} here")
+        result = main.extract_video_url("https://x.com/u/status/1")
+        assert result["message"] == main.NO_VIDEO_MESSAGE, marker

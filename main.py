@@ -49,6 +49,15 @@ MAX_CONCURRENT_EXTRACTIONS = int(os.getenv("MAX_CONCURRENT_EXTRACTIONS", "8"))
 QUEUE_WAIT_SECONDS = float(os.getenv("EXTRACT_QUEUE_WAIT_SECONDS", "20"))
 
 NO_VIDEO_MESSAGE = "本帖子中无视频可下载"
+
+# yt-dlp 表示"帖子不含视频"的错误文案。改用小写子串匹配,新增文案在此追加。
+NO_VIDEO_ERROR_MARKERS = (
+    "no video could be found",
+    "video unavailable",
+    "not a video",
+    "no video formats found",
+)
+
 INVALID_URL_MESSAGE = "无效的 Twitter/X 帖子链接"
 BUSY_MESSAGE = "服务繁忙,请稍后重试"
 
@@ -239,7 +248,7 @@ def _extract_uncached(url: str) -> dict[str, Any]:
             info = ydl.extract_info(url, download=False)
     except yt_dlp.utils.DownloadError as exc:
         message = str(exc).lower()
-        if "video unavailable" in message or "not a video" in message:
+        if any(marker in message for marker in NO_VIDEO_ERROR_MARKERS):
             return {"success": False, "message": NO_VIDEO_MESSAGE}
         logger.warning("yt-dlp 解析失败 url=%s: %s", url, exc)
         return {"success": False, "message": "解析失败,请确认链接有效且帖子包含视频"}
